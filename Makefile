@@ -16,3 +16,6 @@ fix:
 
 test:
 	uv run pytest
+
+
+commit-ready: format lint test
