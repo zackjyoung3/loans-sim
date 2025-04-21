@@ -8,7 +8,7 @@ from pydantic import BaseModel, constr, computed_field
 
 import loans_sim.constants as C
 from loans_sim.custom_pydantic.annotations import DollarDecimal
-from loans_sim.utils import get_monthly_interest_rate, round_dollar_to_nearest_cent
+from loans_sim.utils import get_monthly_rate, round_dollar_to_nearest_cent
 
 
 PAYMENT_PLAN_SCHEMA = OrderedDict(
@@ -70,7 +70,7 @@ class FixedRateLoan(BaseModel):
     @computed_field
     @property
     def monthly_interest_rate(self) -> float:
-        return get_monthly_interest_rate(self.annual_interest_rate)
+        return get_monthly_rate(self.annual_interest_rate)
 
     @computed_field
     @property

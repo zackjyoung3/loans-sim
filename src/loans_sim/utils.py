@@ -14,13 +14,14 @@ def round_dollar_to_nearest_cent(val: int | float | str | Decimal) -> Decimal:
     return val.quantize(Decimal(C.DOLLAR_DECIMAL_QUANTIZE_VAL), rounding=ROUND_HALF_UP)
 
 
-def get_monthly_interest_rate(annual_interest_rate: float) -> float:
+def get_monthly_rate(annual_rate: float) -> float:
     """
-    Compute monthly interest rate given annual interest rate.
-    :param annual_interest_rate: The annual interest rate. e.g. pass 0.06 for 6%, 0.045 for 4.5%, etc.
-    :return: the monthly interest rate
+    Compute monthly rate given annual rate
+    :param annual_rate: An annual rate where the float represents a percentage.
+    e.g. pass 0.06 for 6%, 0.045 for 4.5%, etc.
+    :return: the monthly rate
     """
-    return annual_interest_rate / C.MONTHS_IN_YEAR
+    return annual_rate / C.MONTHS_IN_YEAR
 
 
 def print_full_df(df: pl.DataFrame) -> None:
