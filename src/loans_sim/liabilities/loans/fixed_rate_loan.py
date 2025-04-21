@@ -144,7 +144,7 @@ class FixedRateLoan(BaseModel):
         return pl.DataFrame(states, schema=PAYMENT_PLAN_SCHEMA)
 
     # use method rather than property for this as it is non-trivial computation
-    def get_total_payment_req(self) -> Decimal:
+    def get_remaining_total_payment_req(self) -> Decimal:
         """
         Less efficient than amortized calculation obviously, but permits arbitrary start date calculations e.g.
         we resolve lifetime payment for a loan at any arbitrary state in terms of principal and interest rather than
@@ -153,4 +153,5 @@ class FixedRateLoan(BaseModel):
         payment_plan = self.compute_payment_plan()
         if payment_plan.is_empty():
             return C.ZERO_DOLLARS_DECIMAL
-        return payment_plan.select(pl.last("Cum Total Paid")).item()
+        last_total = payment_plan.select(pl.last("Cum Total Paid")).item()
+        return last_total - self.lifetime_payments

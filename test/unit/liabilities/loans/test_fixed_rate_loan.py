@@ -243,7 +243,7 @@ def test_get_total_payment_req_no_payoff_case():
         monthly_payment=Decimal("150.00"),
     )
 
-    assert loan_in_state_to_be_paid_off_in_a_month.get_total_payment_req() == C.ZERO_DOLLARS_DECIMAL
+    assert loan_in_state_to_be_paid_off_in_a_month.get_remaining_total_payment_req() == C.ZERO_DOLLARS_DECIMAL
 
 
 def test_get_total_payment_req_one_month_payoff():
@@ -256,7 +256,7 @@ def test_get_total_payment_req_one_month_payoff():
     )
     # 130 existing amount + 1 for interest accumulated in that month
 
-    assert loan_in_state_to_be_paid_off_in_a_month.get_total_payment_req() == Decimal("131.00")
+    assert loan_in_state_to_be_paid_off_in_a_month.get_remaining_total_payment_req() == Decimal("131.00")
 
 
 def test_get_total_payment_req_n_month_payoff():
@@ -272,4 +272,4 @@ def test_get_total_payment_req_n_month_payoff():
     # 31.81 => .32 interest => no remaining (32.13 paid)
     # 50 + 50 + 32.13 = 132.13 total
 
-    assert loan_in_state_to_be_paid_off_in_n_months.get_total_payment_req() == Decimal("132.13")
+    assert loan_in_state_to_be_paid_off_in_n_months.get_remaining_total_payment_req() == Decimal("132.13")
