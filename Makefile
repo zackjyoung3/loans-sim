@@ -1,4 +1,4 @@
-.PHONY: install format
+.PHONY: install format lint fix test
 
 install:
 	uv venv
@@ -12,3 +12,7 @@ lint:
 
 fix:
 	uv run ruff check --fix
+
+
+test:
+	uv run pytest

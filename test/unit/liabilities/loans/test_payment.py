@@ -1,0 +1,183 @@
+import copy
+from decimal import Decimal
+
+import polars as pl
+import polars.testing as plt
+import pytest
+
+import loans_sim.constants as C
+from loans_sim.liabilities.loans.fixed_rate_loan import FixedRateLoan
+from loans_sim.liabilities.loans.payment import PAYMENT_PLAN_SCHEMA, make_monthly_payment, make_payment_plan
+
+
+# ensure total_paid updated correctly for from scratch + running total cases
+@pytest.mark.parametrize("total_paid", [0, 200], ids=["first_payment", "subsequent_payment"])
+def test_after_monthly_payment_payoff_less_than_accum_interest_plus_current_amount(total_paid: int):
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("150.00"),
+        lifetime_payments=total_paid,
+    )
+    expected_paid = Decimal("131.00")  # 130 balance + (1% monthly * 100 principal)
+    original = copy.deepcopy(loan_in_state_to_be_paid_off_in_a_month)
+
+    after_payment_res = make_monthly_payment(loan_in_state_to_be_paid_off_in_a_month)
+    after_payment = after_payment_res.loan_status
+    payment_info = after_payment_res.payment_info
+
+    assert loan_in_state_to_be_paid_off_in_a_month == original  # no side effects
+    assert after_payment is not original  # new copy returned
+
+    assert after_payment.current_amount == C.ZERO_DOLLARS_DECIMAL
+    assert after_payment.principal == C.ZERO_DOLLARS_DECIMAL
+    assert after_payment.lifetime_payments == Decimal(str(total_paid + expected_paid))
+    assert after_payment.is_paid_off is True
+
+    assert payment_info.interest_paid == 31
+    assert payment_info.principal_paid == 100
+
+
+# ensure total_paid updated correctly for from scratch + running total cases
+@pytest.mark.parametrize("total_paid", [0, 200], ids=["first_payment", "subsequent_payment"])
+def test_after_monthly_payment_only_interest_can_be_paid_off(total_paid: int):
+    loan_only_interest_can_be_paid = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("30.99"),
+        lifetime_payments=total_paid,
+    )
+    expected_principal = loan_only_interest_can_be_paid.principal
+    expected_paid = Decimal("30.99")  # full monthly payment expected
+    expected_interest = Decimal("0.01")
+    expected_total = expected_principal + expected_interest
+    original = copy.deepcopy(loan_only_interest_can_be_paid)
+
+    after_payment_res = make_monthly_payment(loan_only_interest_can_be_paid)
+    after_payment = after_payment_res.loan_status
+    payment_info = after_payment_res.payment_info
+
+    assert loan_only_interest_can_be_paid == original  # no side effects
+    assert after_payment is not original  # new copy returned
+
+    assert after_payment.current_amount == expected_total
+    assert after_payment.principal == expected_principal
+    assert after_payment.interest == expected_interest
+    assert after_payment.lifetime_payments == Decimal(str(total_paid + expected_paid))
+    assert after_payment.is_paid_off is False
+
+    assert payment_info.interest_paid == expected_paid
+    assert payment_info.principal_paid == Decimal("0")
+
+
+# ensure total_paid updated correctly for from scratch + running total cases
+@pytest.mark.parametrize("total_paid", [0, 200], ids=["first_payment", "subsequent_payment"])
+def test_after_monthly_payment_only_interest_can_be_paid_off_boundary(total_paid: int):
+    loan_only_interest_can_be_paid = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("31"),
+        lifetime_payments=total_paid,
+    )
+    expected_principal = loan_only_interest_can_be_paid.principal
+    expected_paid = Decimal("31")  # full monthly payment expected
+    expected_interest = C.ZERO_DOLLARS_DECIMAL
+    expected_total = expected_principal + expected_interest
+    original = copy.deepcopy(loan_only_interest_can_be_paid)
+
+    after_payment_res = make_monthly_payment(loan_only_interest_can_be_paid)
+    after_payment = after_payment_res.loan_status
+    payment_info = after_payment_res.payment_info
+
+    assert loan_only_interest_can_be_paid == original  # no side effects
+    assert after_payment is not original  # new copy returned
+
+    assert after_payment.current_amount == expected_total
+    assert after_payment.principal == expected_principal
+    assert after_payment.interest == expected_interest
+    assert after_payment.lifetime_payments == Decimal(str(total_paid + expected_paid))
+    assert after_payment.is_paid_off is False
+
+    assert payment_info.interest_paid == expected_paid
+    assert payment_info.principal_paid == Decimal("0")
+
+
+# ensure total_paid updated correctly for from scratch + running total cases
+@pytest.mark.parametrize("total_paid", [0, 200], ids=["first_payment", "subsequent_payment"])
+def test_after_monthly_payment_principal_can_be_paid_off(total_paid: int):
+    loan_principal_can_be_paid_after_interest_paid = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("50"),
+        lifetime_payments=total_paid,
+    )
+    # 31 in interest paid off => 19 left over for principal
+    expected_principal = loan_principal_can_be_paid_after_interest_paid.principal - Decimal("19.00")
+    expected_paid = Decimal("50")  # full monthly payment expected
+    expected_interest = C.ZERO_DOLLARS_DECIMAL
+    expected_total = expected_principal + expected_interest
+    original = copy.deepcopy(loan_principal_can_be_paid_after_interest_paid)
+
+    after_payment_res = make_monthly_payment(loan_principal_can_be_paid_after_interest_paid)
+    after_payment = after_payment_res.loan_status
+    payment_info = after_payment_res.payment_info
+
+    assert loan_principal_can_be_paid_after_interest_paid == original  # no side effects
+    assert after_payment is not original  # new copy returned
+
+    assert after_payment.current_amount == expected_total
+    assert after_payment.principal == expected_principal
+    assert after_payment.interest == expected_interest
+    assert after_payment.lifetime_payments == Decimal(str(total_paid + expected_paid))
+    assert after_payment.is_paid_off is False
+
+    assert payment_info.interest_paid == Decimal("31")
+    assert payment_info.principal_paid == Decimal("19")
+
+
+def test_make_payment_plan_loan_already_paid_off_empty():
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("0.00"),
+        principal=Decimal("0.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("150.00"),
+    )
+
+    payment_plan = make_payment_plan(loan_in_state_to_be_paid_off_in_a_month)
+
+    assert payment_plan.is_empty()
+    assert payment_plan.schema == PAYMENT_PLAN_SCHEMA
+
+
+def test_make_payment_plan_one_month_payoff():
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("150.00"),
+    )
+    expected_single_month_info = {
+        "Month": 1,
+        "Total Remaining": Decimal("0.00"),
+        "Principal Remaining": Decimal("0.00"),
+        "Interest Remaining": Decimal("0.00"),
+        "Cum Total Paid": Decimal("131.00"),
+        "Monthly Principal Paid": Decimal("100.00"),
+        "Monthly Interest Paid": Decimal("31.00"),
+    }
+    expected_df = pl.DataFrame(expected_single_month_info, schema=PAYMENT_PLAN_SCHEMA)
+    payment_plan = make_payment_plan(loan_in_state_to_be_paid_off_in_a_month)
+
+    assert payment_plan.height == 1  # single payment req
+    assert payment_plan.schema == PAYMENT_PLAN_SCHEMA
+    plt.assert_frame_equal(payment_plan, expected_df)
