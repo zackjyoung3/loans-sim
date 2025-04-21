@@ -21,7 +21,7 @@ class HighYieldSavingsAccount(TemporalAsset):
     def average_monthly_yield(self) -> float:
         return get_monthly_rate(self.apy)
 
-    def after_one_month(self) -> Self:
+    def _update_state_after_month_completed(self, new_date: date) -> Self:
         new_balance = self.balance + round_dollar_to_nearest_cent(
             self.balance * Decimal(str(self.average_monthly_yield))
         )
