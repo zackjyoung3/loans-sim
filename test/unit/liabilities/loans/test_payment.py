@@ -7,7 +7,12 @@ import pytest
 
 import loans_sim.constants as C
 from loans_sim.liabilities.loans.fixed_rate_loan import FixedRateLoan
-from loans_sim.liabilities.loans.payment import PAYMENT_PLAN_SCHEMA, make_monthly_payment, make_payment_plan
+from loans_sim.liabilities.loans.payment import (
+    PAYMENT_PLAN_SCHEMA,
+    get_total_payment_req,
+    make_monthly_payment,
+    make_payment_plan,
+)
 
 
 # ensure total_paid updated correctly for from scratch + running total cases
@@ -181,3 +186,44 @@ def test_make_payment_plan_one_month_payoff():
     assert payment_plan.height == 1  # single payment req
     assert payment_plan.schema == PAYMENT_PLAN_SCHEMA
     plt.assert_frame_equal(payment_plan, expected_df)
+
+
+def test_get_total_payment_req_no_payoff_case():
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("0.00"),
+        principal=Decimal("0.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("150.00"),
+    )
+
+    assert get_total_payment_req(loan_in_state_to_be_paid_off_in_a_month) == C.ZERO_DOLLARS_DECIMAL
+
+
+def test_get_total_payment_req_one_month_payoff():
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("150.00"),
+    )
+    # 130 existing amount + 1 for interest accumulated in that month
+
+    assert get_total_payment_req(loan_in_state_to_be_paid_off_in_a_month) == Decimal("131.00")
+
+
+def test_get_total_payment_req_n_month_payoff():
+    loan_in_state_to_be_paid_off_in_a_month = FixedRateLoan(
+        vendor="TestBank",
+        current_amount=Decimal("130.00"),
+        principal=Decimal("100.00"),
+        annual_interest_rate=0.12,
+        monthly_payment=Decimal("50.00"),
+    )
+    # 50 first month off 131 => 81 remaining (50 paid)
+    # 81 => .81 interest => 31.81 remaining (50 paid)
+    # 31.81 => .32 interest => no remaining (32.13 paid)
+    # 50 + 50 + 32.13 = 132.13 total
+
+    assert get_total_payment_req(loan_in_state_to_be_paid_off_in_a_month) == Decimal("132.13")

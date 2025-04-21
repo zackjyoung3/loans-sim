@@ -104,3 +104,15 @@ def make_payment_plan(loan: FixedRateLoan) -> pl.DataFrame:
         month += 1
 
     return pl.DataFrame(states, schema=PAYMENT_PLAN_SCHEMA)
+
+
+def get_total_payment_req(loan: FixedRateLoan) -> Decimal:
+    """
+    Less efficient than amortized calculation obviously, but permits arbitrary start date calculations e.g.
+    we resolve lifetime payment for a loan at any arbitrary state in terms of principal and interest rather than
+    requiring that we just have initial amount (principal)
+    """
+    payment_plan = make_payment_plan(loan)
+    if payment_plan.is_empty():
+        return C.ZERO_DOLLARS_DECIMAL
+    return payment_plan.select(pl.last("Cum Total Paid")).item()
