@@ -17,6 +17,7 @@ class TemporalAsset(BaseModel, ABC):
     def after_one_month(self) -> Self:
         new_date = self.as_of_date + relativedelta(months=1)
         updated_instance = self._update_state_after_month_completed(new_date)
+        updated_instance.as_of_date = new_date
 
         return updated_instance
 
